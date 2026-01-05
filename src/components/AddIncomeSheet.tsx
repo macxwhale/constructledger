@@ -126,7 +126,7 @@ export default function AddIncomeSheet({
 
           {/* Amount */}
           <div className="space-y-2">
-            <Label htmlFor="amount">Amount ($) *</Label>
+            <Label htmlFor="amount">Amount (KSH) *</Label>
             <Input
               id="amount"
               type="number"
