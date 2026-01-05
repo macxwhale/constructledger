@@ -270,6 +270,10 @@ export type Database = {
     }
     Functions: {
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
+      handle_new_user_signup: {
+        Args: { _company_name: string; _full_name: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _company_id: string
