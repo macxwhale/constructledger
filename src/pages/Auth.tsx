@@ -59,36 +59,35 @@ export default function Auth() {
   const fetchInvitation = async (token: string) => {
     setLoadingInvitation(true);
     try {
-      // Use raw query since types haven't been regenerated yet
-      const { data, error } = await (supabase as any)
-        .from('invitations')
-        .select('email, role, company_id')
-        .eq('token', token)
-        .is('accepted_at', null)
-        .gt('expires_at', new Date().toISOString())
-        .single();
+      // Use the secure RPC to get invitation details (works without auth)
+      const { data, error } = await supabase.rpc('get_invitation_details', {
+        _token: token,
+      });
 
-      if (error || !data) {
+      if (error) {
+        console.error('Invitation fetch error:', error);
         toast.error('Invalid or expired invitation link');
         navigate('/auth');
         return;
       }
 
-      // Get company name separately
-      const { data: companyData } = await supabase
-        .from('companies')
-        .select('name')
-        .eq('id', (data as any).company_id)
-        .single();
+      const result = data as { success: boolean; error?: string; email?: string; role?: string; company_name?: string };
+      
+      if (!result.success) {
+        toast.error(result.error || 'Invalid or expired invitation link');
+        navigate('/auth');
+        return;
+      }
 
       setInvitationData({
-        email: (data as any).email,
-        role: (data as any).role,
-        company_name: companyData?.name || 'Unknown Company',
+        email: result.email!,
+        role: result.role!,
+        company_name: result.company_name || 'Unknown Company',
       });
-      setEmail((data as any).email);
+      setEmail(result.email!);
       setIsSignUp(true);
     } catch (error) {
+      console.error('Failed to load invitation:', error);
       toast.error('Failed to load invitation');
     } finally {
       setLoadingInvitation(false);

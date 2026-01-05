@@ -107,10 +107,23 @@ export default function Settings() {
   }, [user]);
 
   const checkIfManager = async () => {
+    // Get user's company first, then check role within that company
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('user_id', user!.id)
+      .single();
+
+    if (!profile?.company_id) {
+      setIsManager(false);
+      return;
+    }
+
     const { data } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', user!.id)
+      .eq('company_id', profile.company_id)
       .single();
     
     setIsManager(data?.role === 'manager');
@@ -186,19 +199,34 @@ export default function Settings() {
 
   const fetchPendingInvitations = async () => {
     try {
-      // Use raw query since types haven't been regenerated for invitations table yet
+      // Get user's company first
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('user_id', user!.id)
+        .single();
+
+      if (!profile?.company_id) return;
+
+      // Fetch pending invitations for this company (RLS ensures manager access)
       const { data, error } = await (supabase as any)
         .from('invitations')
         .select('id, email, role, expires_at, created_at')
+        .eq('company_id', profile.company_id)
         .is('accepted_at', null)
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Failed to load invitations:', error);
+        toast.error('Failed to load pending invitations');
+        return;
+      }
 
       setPendingInvitations((data as PendingInvitation[]) || []);
     } catch (error) {
       console.error('Failed to load invitations:', error);
+      toast.error('Failed to load pending invitations');
     }
   };
 

@@ -5,6 +5,11 @@ const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+// Log config on startup (without exposing secrets)
+console.log("send-invitation function loaded");
+console.log("RESEND_API_KEY configured:", !!RESEND_API_KEY);
+console.log("SUPABASE_URL configured:", !!supabaseUrl);
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -23,6 +28,12 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // Validate RESEND_API_KEY is configured
+    if (!RESEND_API_KEY) {
+      console.error("RESEND_API_KEY is not configured");
+      throw new Error("Email service not configured. Please add RESEND_API_KEY secret.");
+    }
+
     // Get auth user from request
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -180,13 +191,21 @@ const handler = async (req: Request): Promise<Response> => {
       }),
     });
 
+    const emailResponseData = await emailResponse.json();
+    
     if (!emailResponse.ok) {
-      const errorData = await emailResponse.json();
-      console.error("Resend API error:", errorData);
-      throw new Error("Failed to send invitation email");
+      console.error("Resend API error:", {
+        status: emailResponse.status,
+        statusText: emailResponse.statusText,
+        body: emailResponseData,
+      });
+      throw new Error(`Failed to send invitation email: ${emailResponseData.message || emailResponse.statusText}`);
     }
 
-    console.log("Email sent successfully:", emailResponse);
+    console.log("Email sent successfully:", {
+      id: emailResponseData.id,
+      to: email,
+    });
 
     return new Response(
       JSON.stringify({ success: true, message: "Invitation sent successfully" }),
