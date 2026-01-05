@@ -17,6 +17,9 @@ import {
   Mail,
   Trash2,
   UserPlus,
+  Send,
+  Clock,
+  X,
 } from 'lucide-react';
 import {
   Card,
@@ -35,11 +38,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import type { Tables, Enums } from '@/integrations/supabase/types';
-
-type Profile = Tables<'profiles'>;
-type UserRole = Tables<'user_roles'>;
 
 interface TeamMember {
   id: string;
@@ -49,11 +56,20 @@ interface TeamMember {
   role: Enums<'app_role'>;
 }
 
+interface PendingInvitation {
+  id: string;
+  email: string;
+  role: Enums<'app_role'>;
+  expires_at: string;
+  created_at: string;
+}
+
 export default function Settings() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isManager, setIsManager] = useState(false);
   
   // Profile state
   const [fullName, setFullName] = useState('');
@@ -62,14 +78,17 @@ export default function Settings() {
   
   // Team members state
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
   const [loadingTeam, setLoadingTeam] = useState(true);
   
   // Invite state
   const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'manager' | 'viewer'>('viewer');
   const [inviting, setInviting] = useState(false);
   
   // Delete state
   const [memberToRemove, setMemberToRemove] = useState<TeamMember | null>(null);
+  const [invitationToCancel, setInvitationToCancel] = useState<PendingInvitation | null>(null);
   const [removing, setRemoving] = useState(false);
 
   useEffect(() => {
@@ -82,8 +101,20 @@ export default function Settings() {
     if (user) {
       fetchProfileAndCompany();
       fetchTeamMembers();
+      fetchPendingInvitations();
+      checkIfManager();
     }
   }, [user]);
+
+  const checkIfManager = async () => {
+    const { data } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user!.id)
+      .single();
+    
+    setIsManager(data?.role === 'manager');
+  };
 
   const fetchProfileAndCompany = async () => {
     try {
@@ -153,6 +184,24 @@ export default function Settings() {
     }
   };
 
+  const fetchPendingInvitations = async () => {
+    try {
+      // Use raw query since types haven't been regenerated for invitations table yet
+      const { data, error } = await (supabase as any)
+        .from('invitations')
+        .select('id, email, role, expires_at, created_at')
+        .is('accepted_at', null)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setPendingInvitations((data as PendingInvitation[]) || []);
+    } catch (error) {
+      console.error('Failed to load invitations:', error);
+    }
+  };
+
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
@@ -179,6 +228,57 @@ export default function Settings() {
       toast.error('Failed to save settings');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleInviteMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail.trim()) return;
+
+    setInviting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-invitation', {
+        body: {
+          email: inviteEmail.trim().toLowerCase(),
+          role: inviteRole,
+          appUrl: window.location.origin,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast.success(`Invitation sent to ${inviteEmail}`);
+      setInviteEmail('');
+      setInviteRole('viewer');
+      fetchPendingInvitations();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to send invitation');
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const handleCancelInvitation = async () => {
+    if (!invitationToCancel) return;
+
+    setRemoving(true);
+    try {
+      // Use raw query since types haven't been regenerated for invitations table yet
+      const { error } = await (supabase as any)
+        .from('invitations')
+        .delete()
+        .eq('id', invitationToCancel.id);
+
+      if (error) throw error;
+
+      toast.success('Invitation cancelled');
+      fetchPendingInvitations();
+    } catch (error) {
+      toast.error('Failed to cancel invitation');
+    } finally {
+      setRemoving(false);
+      setInvitationToCancel(null);
     }
   };
 
@@ -224,6 +324,13 @@ export default function Settings() {
       default:
         return 'outline';
     }
+  };
+
+  const formatTimeRemaining = (expiresAt: string) => {
+    const expires = new Date(expiresAt);
+    const now = new Date();
+    const daysRemaining = Math.ceil((expires.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    return `${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} left`;
   };
 
   if (authLoading || loading) {
@@ -317,7 +424,13 @@ export default function Settings() {
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   placeholder="Your company name"
+                  disabled={!isManager}
                 />
+                {!isManager && (
+                  <p className="text-xs text-muted-foreground">
+                    Only managers can edit the company name
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -327,6 +440,103 @@ export default function Settings() {
             {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             Save Changes
           </Button>
+
+          {/* Invite Team Members (Managers only) */}
+          {isManager && (
+            <Card className="industrial-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 font-heading">
+                  <UserPlus className="w-5 h-5" />
+                  INVITE TEAM MEMBER
+                </CardTitle>
+                <CardDescription>
+                  Send an invitation to add someone to your company
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleInviteMember} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="inviteEmail">Email Address</Label>
+                      <Input
+                        id="inviteEmail"
+                        type="email"
+                        placeholder="colleague@company.com"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        disabled={inviting}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="inviteRole">Role</Label>
+                      <Select
+                        value={inviteRole}
+                        onValueChange={(value: 'manager' | 'viewer') => setInviteRole(value)}
+                        disabled={inviting}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="manager">Manager (full access)</SelectItem>
+                          <SelectItem value="viewer">Viewer (read-only)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <Button type="submit" disabled={inviting || !inviteEmail.trim()} className="w-full md:w-auto">
+                    {inviting ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4 mr-2" />
+                    )}
+                    Send Invitation
+                  </Button>
+                </form>
+
+                {/* Pending Invitations */}
+                {pendingInvitations.length > 0 && (
+                  <div className="mt-6 pt-6 border-t border-border">
+                    <h4 className="font-medium mb-3 flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      Pending Invitations
+                    </h4>
+                    <div className="space-y-2">
+                      {pendingInvitations.map((invite) => (
+                        <div
+                          key={invite.id}
+                          className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg"
+                        >
+                          <div className="flex items-center gap-3">
+                            <Mail className="w-4 h-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm font-medium">{invite.email}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatTimeRemaining(invite.expires_at)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={getRoleBadgeVariant(invite.role)}>
+                              {invite.role}
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => setInvitationToCancel(invite)}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Team Members */}
           <Card className="industrial-card">
@@ -373,7 +583,7 @@ export default function Settings() {
                         <Badge variant={getRoleBadgeVariant(member.role)}>
                           {member.role}
                         </Badge>
-                        {member.user_id !== user?.id && (
+                        {member.user_id !== user?.id && isManager && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -388,18 +598,36 @@ export default function Settings() {
                   ))}
                 </div>
               )}
-
-              {/* Note about inviting */}
-              <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-                <p className="text-sm text-muted-foreground">
-                  <strong>Note:</strong> To invite new team members, they need to sign up 
-                  and be added to your company. Contact support for bulk team setup.
-                </p>
-              </div>
             </CardContent>
           </Card>
         </div>
       </main>
+
+      {/* Cancel Invitation Dialog */}
+      <AlertDialog
+        open={!!invitationToCancel}
+        onOpenChange={() => setInvitationToCancel(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Invitation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will cancel the invitation sent to {invitationToCancel?.email}. 
+              They will no longer be able to join using this link.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removing}>Keep Invitation</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelInvitation}
+              disabled={removing}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {removing ? 'Cancelling...' : 'Cancel Invitation'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Remove Member Dialog */}
       <AlertDialog

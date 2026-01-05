@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import NewProject from "./pages/NewProject";
 import Project from "./pages/Project";
 import Settings from "./pages/Settings";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/projects/new" element={<NewProject />} />
             <Route path="/projects/:id" element={<Project />} />
