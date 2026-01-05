@@ -16,7 +16,19 @@ import {
   Truck,
   Hammer,
   Plus,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import type { Tables } from '@/integrations/supabase/types';
 import AddCostSheet from '@/components/AddCostSheet';
 import AddIncomeSheet from '@/components/AddIncomeSheet';
@@ -37,6 +49,11 @@ export default function ProjectPage() {
   const [addCostOpen, setAddCostOpen] = useState(false);
   const [addIncomeOpen, setAddIncomeOpen] = useState(false);
   const [selectedCostType, setSelectedCostType] = useState<string | null>(null);
+  const [editingCost, setEditingCost] = useState<Cost | null>(null);
+  const [editingIncome, setEditingIncome] = useState<Income | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{ type: 'cost' | 'income'; id: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -93,7 +110,62 @@ export default function ProjectPage() {
 
   const handleOpenAddCost = (type: string) => {
     setSelectedCostType(type);
+    setEditingCost(null);
     setAddCostOpen(true);
+  };
+
+  const handleEditCost = (cost: Cost) => {
+    setEditingCost(cost);
+    setSelectedCostType(cost.cost_type);
+    setAddCostOpen(true);
+  };
+
+  const handleEditIncome = (incomeItem: Income) => {
+    setEditingIncome(incomeItem);
+    setAddIncomeOpen(true);
+  };
+
+  const handleOpenAddIncome = () => {
+    setEditingIncome(null);
+    setAddIncomeOpen(true);
+  };
+
+  const handleDeleteClick = (type: 'cost' | 'income', itemId: string) => {
+    setItemToDelete({ type, id: itemId });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from(itemToDelete.type === 'cost' ? 'costs' : 'income')
+        .delete()
+        .eq('id', itemToDelete.id);
+
+      if (error) throw error;
+
+      toast.success(`${itemToDelete.type === 'cost' ? 'Cost' : 'Income'} deleted successfully`);
+      fetchProjectData();
+    } catch (error) {
+      toast.error('Failed to delete item');
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
+    }
+  };
+
+  const getCostTypeIcon = (costType: string) => {
+    switch (costType) {
+      case 'materials': return <Package className="w-5 h-5 text-chart-1" />;
+      case 'labor': return <Users className="w-5 h-5 text-chart-2" />;
+      case 'equipment': return <Truck className="w-5 h-5 text-chart-3" />;
+      case 'subcontractors': return <Hammer className="w-5 h-5 text-chart-4" />;
+      default: return <Package className="w-5 h-5 text-destructive" />;
+    }
   };
 
   if (authLoading || loading) {
@@ -191,7 +263,7 @@ export default function ProjectPage() {
               <Button
                 variant="outline"
                 className="w-full mb-4 justify-start tactile-press border-success/30 hover:bg-success/10 hover:border-success/50"
-                onClick={() => setAddIncomeOpen(true)}
+                onClick={handleOpenAddIncome}
               >
                 <DollarSign className="w-4 h-4 mr-3 text-success" />
                 Add Income
@@ -266,37 +338,59 @@ export default function ProjectPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                {[...costs.slice(0, 5).map(c => ({ ...c, type: 'cost' as const })), 
-                  ...income.slice(0, 5).map(i => ({ ...i, type: 'income' as const }))]
+                {[...costs.map(c => ({ ...c, type: 'cost' as const })), 
+                  ...income.map(i => ({ ...i, type: 'income' as const }))]
                   .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                  .slice(0, 10)
                   .map((item, index) => (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg slide-in-lock"
+                      className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg slide-in-lock group"
                       style={{ animationDelay: `${index * 50}ms` }}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
                         {item.type === 'income' ? (
-                          <DollarSign className="w-5 h-5 text-success" />
+                          <DollarSign className="w-5 h-5 text-success flex-shrink-0" />
                         ) : (
-                          <Package className="w-5 h-5 text-destructive" />
+                          getCostTypeIcon((item as Cost).cost_type)
                         )}
-                        <div>
-                          <p className="font-medium">{item.description || 'No description'}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium truncate">{item.description || 'No description'}</p>
                           <p className="text-sm text-muted-foreground">
                             {new Date(item.date).toLocaleDateString()}
                             {item.type === 'cost' && ` • ${(item as Cost).cost_type}`}
                           </p>
                         </div>
                       </div>
-                      <span
-                        className={`font-heading ${
-                          item.type === 'income' ? 'text-success' : 'text-destructive'
-                        }`}
-                      >
-                        {item.type === 'income' ? '+' : '-'}{formatCurrency(Number(item.amount))}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`font-heading ${
+                            item.type === 'income' ? 'text-success' : 'text-destructive'
+                          }`}
+                        >
+                          {item.type === 'income' ? '+' : '-'}{formatCurrency(Number(item.amount))}
+                        </span>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => item.type === 'cost' 
+                              ? handleEditCost(item as Cost) 
+                              : handleEditIncome(item as Income)
+                            }
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteClick(item.type, item.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   ))}
               </div>
@@ -308,18 +402,48 @@ export default function ProjectPage() {
       {/* Sheets */}
       <AddCostSheet
         open={addCostOpen}
-        onOpenChange={setAddCostOpen}
+        onOpenChange={(open) => {
+          setAddCostOpen(open);
+          if (!open) setEditingCost(null);
+        }}
         projectId={id!}
         defaultCostType={selectedCostType}
+        editingCost={editingCost}
         onSuccess={fetchProjectData}
       />
 
       <AddIncomeSheet
         open={addIncomeOpen}
-        onOpenChange={setAddIncomeOpen}
+        onOpenChange={(open) => {
+          setAddIncomeOpen(open);
+          if (!open) setEditingIncome(null);
+        }}
         projectId={id!}
+        editingIncome={editingIncome}
         onSuccess={fetchProjectData}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {itemToDelete?.type === 'cost' ? 'Cost' : 'Income'}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this {itemToDelete?.type === 'cost' ? 'cost entry' : 'income entry'} from the project.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
