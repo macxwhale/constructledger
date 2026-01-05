@@ -42,16 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const redirectUrl = `${window.location.origin}/`;
 
-      // 1. Create the company first
-      const { data: companyData, error: companyError } = await supabase
-        .from('companies')
-        .insert({ name: companyName })
-        .select()
-        .single();
-
-      if (companyError) throw companyError;
-
-      // 2. Sign up the user
+      // 1. Sign up the user first
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -59,39 +50,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           emailRedirectTo: redirectUrl,
           data: {
             full_name: fullName,
-            company_id: companyData.id,
           },
         },
       });
 
-      if (authError) {
-        // Rollback company creation
-        await supabase.from('companies').delete().eq('id', companyData.id);
-        throw authError;
-      }
+      if (authError) throw authError;
 
-      if (authData.user) {
-        // 3. Create profile
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            user_id: authData.user.id,
-            company_id: companyData.id,
-            full_name: fullName,
-          });
+      if (authData.user && authData.session) {
+        // 2. Use the secure function to create company, profile, and role
+        const { error: setupError } = await supabase.rpc('handle_new_user_signup', {
+          _company_name: companyName,
+          _full_name: fullName,
+        });
 
-        if (profileError) throw profileError;
-
-        // 4. Create manager role for the founding user
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: authData.user.id,
-            company_id: companyData.id,
-            role: 'manager',
-          });
-
-        if (roleError) throw roleError;
+        if (setupError) throw setupError;
       }
 
       return { error: null };
