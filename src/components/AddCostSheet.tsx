@@ -58,6 +58,7 @@ export default function AddCostSheet({
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Materials fields
+  const [itemName, setItemName] = useState('');
   const [supplier, setSupplier] = useState('');
   const [quantity, setQuantity] = useState('');
   const [unitCost, setUnitCost] = useState('');
@@ -97,6 +98,7 @@ export default function AddCostSheet({
     setAmount('');
     setDescription('');
     setDate(new Date().toISOString().split('T')[0]);
+    setItemName('');
     setSupplier('');
     setQuantity('');
     setUnitCost('');
@@ -118,7 +120,18 @@ export default function AddCostSheet({
       return;
     }
 
-    if (!description.trim()) {
+    // For materials, require item name
+    if (costType === 'materials' && !itemName.trim()) {
+      toast.error('Please enter an item name');
+      return;
+    }
+
+    // Use item name as description for materials if no description provided
+    const finalDescription = costType === 'materials' && !description.trim() 
+      ? itemName.trim() 
+      : description.trim();
+
+    if (!finalDescription) {
       toast.error('Please enter a description');
       return;
     }
@@ -130,7 +143,7 @@ export default function AddCostSheet({
         project_id: projectId,
         cost_type: costType as 'materials' | 'labor' | 'equipment' | 'subcontractors',
         amount: parseFloat(amount),
-        description: description.trim(),
+        description: finalDescription,
         date,
         created_by: user!.id,
         // Materials fields
@@ -227,10 +240,22 @@ export default function AddCostSheet({
           {costType === 'materials' && (
             <>
               <div className="space-y-2">
+                <Label htmlFor="itemName">Item Name *</Label>
+                <Input
+                  id="itemName"
+                  placeholder="e.g. Logs, Cables, Cement, Nails..."
+                  value={itemName}
+                  onChange={(e) => setItemName(e.target.value)}
+                  className="bg-input border-border"
+                  disabled={loading}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="supplier">Supplier</Label>
                 <Input
                   id="supplier"
-                  placeholder="Home Depot"
+                  placeholder="Hardware Store Name"
                   value={supplier}
                   onChange={(e) => setSupplier(e.target.value)}
                   className="bg-input border-border"
@@ -252,12 +277,12 @@ export default function AddCostSheet({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="unitCost">Unit Cost ($)</Label>
+                  <Label htmlFor="unitCost">Unit Cost (KSH)</Label>
                   <Input
                     id="unitCost"
                     type="number"
                     step="0.01"
-                    placeholder="25.00"
+                    placeholder="2500"
                     value={unitCost}
                     onChange={(e) => setUnitCost(e.target.value)}
                     className="bg-input border-border"
@@ -296,12 +321,12 @@ export default function AddCostSheet({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="hourlyRate">Hourly Rate ($)</Label>
+                  <Label htmlFor="hourlyRate">Hourly Rate (KSH)</Label>
                   <Input
                     id="hourlyRate"
                     type="number"
                     step="0.01"
-                    placeholder="45.00"
+                    placeholder="500"
                     value={hourlyRate}
                     onChange={(e) => setHourlyRate(e.target.value)}
                     className="bg-input border-border"
@@ -339,12 +364,12 @@ export default function AddCostSheet({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="dailyRate">Daily Rate ($)</Label>
+                  <Label htmlFor="dailyRate">Daily Rate (KSH)</Label>
                   <Input
                     id="dailyRate"
                     type="number"
                     step="0.01"
-                    placeholder="350.00"
+                    placeholder="35000"
                     value={dailyRate}
                     onChange={(e) => setDailyRate(e.target.value)}
                     className="bg-input border-border"
@@ -397,12 +422,12 @@ export default function AddCostSheet({
 
           {/* Amount */}
           <div className="space-y-2">
-            <Label htmlFor="amount">Total Amount ($) *</Label>
+            <Label htmlFor="amount">Total Amount (KSH) *</Label>
             <Input
               id="amount"
               type="number"
               step="0.01"
-              placeholder="0.00"
+              placeholder="0"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               className="bg-input border-border text-xl font-heading"
