@@ -12,8 +12,29 @@ import {
   TrendingUp, 
   TrendingDown,
   HardHat,
-  Building2
+  Building2,
+  Settings,
+  Pencil,
+  Trash2,
+  MoreVertical,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import EditProjectDialog from '@/components/EditProjectDialog';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Project = Tables<'projects'>;
@@ -30,6 +51,9 @@ export default function Dashboard() {
   const [projects, setProjects] = useState<ProjectWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [companyName, setCompanyName] = useState('');
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -105,6 +129,28 @@ export default function Dashboard() {
     }
   };
 
+  const handleDeleteProject = async () => {
+    if (!projectToDelete) return;
+
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', projectToDelete.id);
+
+      if (error) throw error;
+
+      toast.success('Project deleted successfully');
+      fetchProjectsWithStats();
+    } catch (error) {
+      toast.error('Failed to delete project');
+    } finally {
+      setDeleting(false);
+      setProjectToDelete(null);
+    }
+  };
+
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
@@ -164,15 +210,28 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleSignOut}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Sign Out
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Link to="/settings">
+                <Settings className="w-4 h-4 mr-2" />
+                Settings
+              </Link>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSignOut}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -225,61 +284,129 @@ export default function Dashboard() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {projects.map((project, index) => (
-              <Link
+              <div
                 key={project.id}
-                to={`/projects/${project.id}`}
-                className="industrial-card p-6 hover:border-primary/50 transition-colors group stagger-fade-in"
+                className="industrial-card p-6 hover:border-primary/50 transition-colors group stagger-fade-in relative"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-heading text-lg truncate group-hover:text-primary transition-colors">
-                      {project.name}
-                    </h3>
-                    {project.client_name && (
-                      <p className="text-sm text-muted-foreground truncate">
-                        {project.client_name}
-                      </p>
-                    )}
-                  </div>
-                  <span className={`text-xs px-2 py-1 rounded border ${getStatusClasses(project.status)}`}>
-                    {project.status.replace('_', ' ')}
-                  </span>
+                {/* Actions dropdown */}
+                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={(e) => e.preventDefault()}
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setEditingProject(project);
+                        }}
+                      >
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setProjectToDelete(project);
+                        }}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
-                {/* P&L Summary */}
-                <div className="space-y-2 pt-4 border-t border-border">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Income</span>
-                    <span className="text-success">{formatCurrency(project.totalIncome)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Costs</span>
-                    <span className="text-destructive">{formatCurrency(project.totalCosts)}</span>
-                  </div>
-                  <div className="flex justify-between items-center pt-2 border-t border-border">
-                    <span className="font-semibold">Net Profit</span>
-                    <span
-                      className={`text-lg font-heading flex items-center gap-1 ${
-                        project.netProfit >= 0 
-                          ? 'text-success profit-glow' 
-                          : 'text-destructive loss-glow'
-                      }`}
-                    >
-                      {project.netProfit >= 0 ? (
-                        <TrendingUp className="w-4 h-4" />
-                      ) : (
-                        <TrendingDown className="w-4 h-4" />
+                <Link to={`/projects/${project.id}`} className="block">
+                  <div className="flex items-start justify-between mb-4 pr-8">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-heading text-lg truncate group-hover:text-primary transition-colors">
+                        {project.name}
+                      </h3>
+                      {project.client_name && (
+                        <p className="text-sm text-muted-foreground truncate">
+                          {project.client_name}
+                        </p>
                       )}
-                      {formatCurrency(project.netProfit)}
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded border ${getStatusClasses(project.status)}`}>
+                      {project.status.replace('_', ' ')}
                     </span>
                   </div>
-                </div>
-              </Link>
+
+                  {/* P&L Summary */}
+                  <div className="space-y-2 pt-4 border-t border-border">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Income</span>
+                      <span className="text-success">{formatCurrency(project.totalIncome)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Costs</span>
+                      <span className="text-destructive">{formatCurrency(project.totalCosts)}</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t border-border">
+                      <span className="font-semibold">Net Profit</span>
+                      <span
+                        className={`text-lg font-heading flex items-center gap-1 ${
+                          project.netProfit >= 0 
+                            ? 'text-success profit-glow' 
+                            : 'text-destructive loss-glow'
+                        }`}
+                      >
+                        {project.netProfit >= 0 ? (
+                          <TrendingUp className="w-4 h-4" />
+                        ) : (
+                          <TrendingDown className="w-4 h-4" />
+                        )}
+                        {formatCurrency(project.netProfit)}
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              </div>
             ))}
           </div>
         )}
       </main>
+
+      {/* Edit Project Dialog */}
+      <EditProjectDialog
+        open={!!editingProject}
+        onOpenChange={(open) => !open && setEditingProject(null)}
+        project={editingProject}
+        onSuccess={fetchProjectsWithStats}
+      />
+
+      {/* Delete Project Dialog */}
+      <AlertDialog open={!!projectToDelete} onOpenChange={() => setProjectToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Project?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete "{projectToDelete?.name}" and all its costs and income records. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteProject}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
