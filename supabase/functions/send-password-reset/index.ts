@@ -24,12 +24,22 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const { email, appUrl }: PasswordResetRequest = await req.json();
-    console.log("Password reset requested for email:", email);
+    const normalizedEmail = (email ?? "").trim().toLowerCase();
 
-    if (!email || !appUrl) {
+    console.log("Password reset requested for email:", normalizedEmail);
+
+    if (!normalizedEmail || !appUrl) {
       return new Response(
         JSON.stringify({ error: "Email and appUrl are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!resendApiKey) {
+      console.error("RESEND_API_KEY is not configured");
+      return new Response(
+        JSON.stringify({ error: "Email service not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -38,7 +48,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Look up user by email using admin API
     const { data: userData, error: userError } = await supabase.auth.admin.listUsers();
-    
+
     if (userError) {
       console.error("Error listing users:", userError);
       // Always return success to prevent email enumeration
@@ -48,10 +58,10 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const user = userData.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+    const user = userData.users.find((u) => u.email?.trim().toLowerCase() === normalizedEmail);
 
     if (!user) {
-      console.log("No user found with email:", email);
+      console.log("No user found with email:", normalizedEmail);
       // Always return success to prevent email enumeration
       return new Response(
         JSON.stringify({ success: true, message: "If an account exists, a reset link has been sent." }),
@@ -65,14 +75,14 @@ const handler = async (req: Request): Promise<Response> => {
     await supabase
       .from("password_reset_tokens")
       .delete()
-      .eq("email", email.toLowerCase())
+      .eq("email", normalizedEmail)
       .is("used_at", null);
 
     // Create new reset token
     const { data: tokenData, error: tokenError } = await supabase
       .from("password_reset_tokens")
       .insert({
-        email: email.toLowerCase(),
+        email: normalizedEmail,
       })
       .select("token")
       .single();
@@ -83,7 +93,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const resetUrl = `${appUrl}/reset-password?token=${tokenData.token}`;
-    console.log("Reset URL generated:", resetUrl);
+    console.log("Reset link generated");
 
     // Send email via Resend REST API
     const emailResponse = await fetch("https://api.resend.com/emails", {
