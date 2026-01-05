@@ -1,96 +1,107 @@
+@import "@fontsource/bai-jamjuree/400.css";
+@import "@fontsource/bai-jamjuree/500.css";
+@import "@fontsource/bai-jamjuree/600.css";
+@import "@fontsource/bai-jamjuree/700.css";
+@import "@fontsource/archivo-black/400.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* ConstructLedger Design System - Dark Industrial Blueprint Theme */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Primary Background - Deep industrial slate */
+    --background: 220 20% 7%;
+    --foreground: 214 32% 91%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    /* Card/Surface - Layered dark surfaces */
+    --card: 220 18% 11%;
+    --card-foreground: 214 32% 91%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    /* Popover */
+    --popover: 220 18% 11%;
+    --popover-foreground: 214 32% 91%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Primary - High-visibility yellow (action) */
+    --primary: 43 96% 56%;
+    --primary-foreground: 220 20% 7%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Secondary - Dark slate surface */
+    --secondary: 220 14% 16%;
+    --secondary-foreground: 214 32% 91%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Muted - Subtle backgrounds */
+    --muted: 220 14% 14%;
+    --muted-foreground: 215 20% 55%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Accent - Cyan-green (profit/success) */
+    --accent: 187 92% 48%;
+    --accent-foreground: 220 20% 7%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Destructive - Electric orange-red (cost/danger) */
+    --destructive: 25 95% 53%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Success - Cyan-green for profit */
+    --success: 187 92% 48%;
+    --success-foreground: 220 20% 7%;
+
+    /* Warning - Orange for caution */
+    --warning: 25 95% 53%;
+    --warning-foreground: 220 20% 7%;
+
+    /* Borders and inputs */
+    --border: 220 13% 20%;
+    --input: 220 13% 18%;
+    --ring: 43 96% 56%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Sidebar */
+    --sidebar-background: 220 18% 9%;
+    --sidebar-foreground: 214 32% 91%;
+    --sidebar-primary: 43 96% 56%;
+    --sidebar-primary-foreground: 220 20% 7%;
+    --sidebar-accent: 220 14% 14%;
+    --sidebar-accent-foreground: 214 32% 91%;
+    --sidebar-border: 220 13% 18%;
+    --sidebar-ring: 43 96% 56%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Chart colors */
+    --chart-1: 43 96% 56%;
+    --chart-2: 187 92% 48%;
+    --chart-3: 25 95% 53%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 160 60% 45%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Same as root - dark by default */
+    --background: 220 20% 7%;
+    --foreground: 214 32% 91%;
+    --card: 220 18% 11%;
+    --card-foreground: 214 32% 91%;
+    --popover: 220 18% 11%;
+    --popover-foreground: 214 32% 91%;
+    --primary: 43 96% 56%;
+    --primary-foreground: 220 20% 7%;
+    --secondary: 220 14% 16%;
+    --secondary-foreground: 214 32% 91%;
+    --muted: 220 14% 14%;
+    --muted-foreground: 215 20% 55%;
+    --accent: 187 92% 48%;
+    --accent-foreground: 220 20% 7%;
+    --destructive: 25 95% 53%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 187 92% 48%;
+    --success-foreground: 220 20% 7%;
+    --warning: 25 95% 53%;
+    --warning-foreground: 220 20% 7%;
+    --border: 220 13% 20%;
+    --input: 220 13% 18%;
+    --ring: 43 96% 56%;
   }
 }
 
@@ -99,7 +110,177 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  html {
+    font-family: "Bai Jamjuree", system-ui, sans-serif;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    background: linear-gradient(145deg, hsl(220 20% 7%) 0%, hsl(220 18% 10%) 100%);
+    min-height: 100vh;
+  }
+
+  /* Blueprint grid background */
+  .blueprint-grid {
+    background-image: 
+      linear-gradient(hsl(var(--border) / 0.3) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border) / 0.3) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* Noise texture overlay */
+  .noise-overlay::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    opacity: 0.03;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  h1, h2, h3, h4, h5, h6, .heading {
+    font-family: "Archivo Black", "Bai Jamjuree", system-ui, sans-serif;
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer components {
+  /* Industrial card styling */
+  .industrial-card {
+    @apply relative overflow-hidden rounded-lg border border-border bg-card;
+    box-shadow: 
+      inset 0 1px 0 0 hsl(var(--border) / 0.5),
+      0 4px 20px -4px hsl(220 20% 3% / 0.5);
+  }
+
+  .industrial-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      hsl(var(--border) / 0.8) 20%,
+      hsl(var(--border) / 0.8) 80%,
+      transparent 100%
+    );
+  }
+
+  /* Profit glow effect */
+  .profit-glow {
+    text-shadow: 0 0 20px hsl(var(--success) / 0.5);
+    animation: profit-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes profit-pulse {
+    0%, 100% { text-shadow: 0 0 20px hsl(var(--success) / 0.4); }
+    50% { text-shadow: 0 0 30px hsl(var(--success) / 0.6); }
+  }
+
+  /* Loss glow effect */
+  .loss-glow {
+    text-shadow: 0 0 20px hsl(var(--destructive) / 0.5);
+    animation: loss-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes loss-pulse {
+    0%, 100% { text-shadow: 0 0 20px hsl(var(--destructive) / 0.4); }
+    50% { text-shadow: 0 0 30px hsl(var(--destructive) / 0.6); }
+  }
+
+  /* Tactile button press */
+  .tactile-press {
+    @apply transition-transform duration-100;
+  }
+
+  .tactile-press:active {
+    transform: scale(0.98);
+  }
+
+  /* Staggered fade-in animation */
+  .stagger-fade-in {
+    animation: stagger-fade 0.4s ease-out forwards;
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  @keyframes stagger-fade {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Slide-in-lock animation for list items */
+  .slide-in-lock {
+    animation: slide-lock 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+
+  @keyframes slide-lock {
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  /* Industrial tab styling */
+  .industrial-tab {
+    @apply relative px-4 py-2 font-semibold text-muted-foreground transition-colors;
+  }
+
+  .industrial-tab[data-state="active"] {
+    @apply text-primary;
+  }
+
+  .industrial-tab[data-state="active"]::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: hsl(var(--primary));
+    border-radius: 3px 3px 0 0;
+  }
+
+  /* Status badges */
+  .status-active {
+    @apply bg-success/20 text-success border-success/40;
+  }
+
+  .status-completed {
+    @apply bg-muted text-muted-foreground border-border;
+  }
+
+  .status-on-hold {
+    @apply bg-warning/20 text-warning border-warning/40;
+  }
+}
+
+@layer utilities {
+  /* Scrollbar styling */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+    border-radius: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
   }
 }
