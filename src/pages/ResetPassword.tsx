@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { HardHat, Lock, ArrowLeft } from 'lucide-react';
+import { HardHat, Lock, ArrowLeft, Loader2 } from 'lucide-react';
 import { z } from 'zod';
 
 const passwordSchema = z.object({
@@ -18,26 +18,22 @@ const passwordSchema = z.object({
 
 export default function ResetPassword() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
+  
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [validSession, setValidSession] = useState(false);
+  const [validToken, setValidToken] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Check if we have a valid recovery session
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setValidSession(true);
-      }
-    });
-
-    // Also check current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setValidSession(true);
-      }
-    });
-  }, []);
+    // Check if we have a token in the URL
+    if (token) {
+      setValidToken(true);
+    } else {
+      setValidToken(false);
+    }
+  }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,20 +47,36 @@ export default function ResetPassword() {
         return;
       }
 
-      const { error } = await supabase.auth.updateUser({ password });
+      // Call the reset-password edge function
+      const { data, error } = await supabase.functions.invoke('reset-password', {
+        body: { token, newPassword: password },
+      });
 
       if (error) throw error;
+      
+      if (data?.error) {
+        throw new Error(data.error);
+      }
 
-      toast.success('Password updated successfully!');
-      navigate('/dashboard');
+      toast.success('Password updated successfully! Please sign in.');
+      navigate('/auth');
     } catch (error: any) {
+      console.error('Reset password error:', error);
       toast.error(error.message || 'Failed to update password');
     } finally {
       setLoading(false);
     }
   };
 
-  if (!validSession) {
+  if (validToken === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!validToken) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="industrial-card p-8 w-full max-w-md text-center">
@@ -131,7 +143,14 @@ export default function ResetPassword() {
           </div>
 
           <Button type="submit" className="w-full tactile-press" disabled={loading}>
-            {loading ? 'Updating...' : 'Update Password'}
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                Updating...
+              </>
+            ) : (
+              'Update Password'
+            )}
           </Button>
         </form>
 
