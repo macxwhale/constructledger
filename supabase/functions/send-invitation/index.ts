@@ -137,7 +137,7 @@ const handler = async (req: Request): Promise<Response> => {
         "Authorization": `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "ConstructLedger <onboarding@resend.dev>",
+        from: "ConstructLedger <no-reply@bunisystems.com>",
         to: [email],
         subject: `You're invited to join ${companyName} on ConstructLedger`,
         html: `
