@@ -21,11 +21,31 @@ import {
 import { toast } from 'sonner';
 import { Loader2, Package, Users, Truck, Hammer } from 'lucide-react';
 
+interface CostData {
+  id: string;
+  cost_type: 'materials' | 'labor' | 'equipment' | 'subcontractors';
+  amount: number;
+  description: string;
+  date: string;
+  supplier?: string | null;
+  quantity?: number | null;
+  unit_cost?: number | null;
+  worker_name?: string | null;
+  hours?: number | null;
+  hourly_rate?: number | null;
+  equipment_name?: string | null;
+  rental_days?: number | null;
+  daily_rate?: number | null;
+  contractor_name?: string | null;
+  invoice_reference?: string | null;
+}
+
 interface AddCostSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
   defaultCostType?: string | null;
+  editingCost?: CostData | null;
   onSuccess: () => void;
 }
 
@@ -48,6 +68,7 @@ export default function AddCostSheet({
   onOpenChange,
   projectId,
   defaultCostType,
+  editingCost,
   onSuccess,
 }: AddCostSheetProps) {
   const { user } = useAuth();
@@ -77,11 +98,36 @@ export default function AddCostSheet({
   const [contractorName, setContractorName] = useState('');
   const [invoiceReference, setInvoiceReference] = useState('');
 
+  // Initialize form when editing
   useEffect(() => {
-    if (defaultCostType) {
+    if (editingCost) {
+      setCostType(editingCost.cost_type);
+      setAmount(String(editingCost.amount));
+      setDescription(editingCost.description || '');
+      setDate(editingCost.date);
+      setItemName(editingCost.description || '');
+      setSupplier(editingCost.supplier || '');
+      setQuantity(editingCost.quantity ? String(editingCost.quantity) : '');
+      setUnitCost(editingCost.unit_cost ? String(editingCost.unit_cost) : '');
+      setWorkerName(editingCost.worker_name || '');
+      setHours(editingCost.hours ? String(editingCost.hours) : '');
+      setHourlyRate(editingCost.hourly_rate ? String(editingCost.hourly_rate) : '');
+      setEquipmentName(editingCost.equipment_name || '');
+      setRentalDays(editingCost.rental_days ? String(editingCost.rental_days) : '');
+      setDailyRate(editingCost.daily_rate ? String(editingCost.daily_rate) : '');
+      setContractorName(editingCost.contractor_name || '');
+      setInvoiceReference(editingCost.invoice_reference || '');
+    } else if (defaultCostType) {
       setCostType(defaultCostType);
     }
-  }, [defaultCostType]);
+  }, [editingCost, defaultCostType]);
+
+  // Reset form when closed
+  useEffect(() => {
+    if (!open) {
+      resetForm();
+    }
+  }, [open]);
 
   // Calculate amount for labor and equipment
   useEffect(() => {
@@ -146,28 +192,36 @@ export default function AddCostSheet({
         description: finalDescription,
         date,
         created_by: user!.id,
-        // Materials fields
         supplier: costType === 'materials' ? (supplier || null) : null,
         quantity: costType === 'materials' && quantity ? parseFloat(quantity) : null,
         unit_cost: costType === 'materials' && unitCost ? parseFloat(unitCost) : null,
-        // Labor fields
         worker_name: costType === 'labor' ? (workerName || null) : null,
         hours: costType === 'labor' && hours ? parseFloat(hours) : null,
         hourly_rate: costType === 'labor' && hourlyRate ? parseFloat(hourlyRate) : null,
-        // Equipment fields
         equipment_name: costType === 'equipment' ? (equipmentName || null) : null,
         rental_days: costType === 'equipment' && rentalDays ? parseInt(rentalDays) : null,
         daily_rate: costType === 'equipment' && dailyRate ? parseFloat(dailyRate) : null,
-        // Subcontractor fields
         contractor_name: costType === 'subcontractors' ? (contractorName || null) : null,
         invoice_reference: costType === 'subcontractors' ? (invoiceReference || null) : null,
       };
 
-      const { error } = await supabase.from('costs').insert(costData);
+      if (editingCost) {
+        // Update existing cost
+        const { error } = await supabase
+          .from('costs')
+          .update(costData)
+          .eq('id', editingCost.id);
 
-      if (error) throw error;
+        if (error) throw error;
+        toast.success('Cost updated successfully!');
+      } else {
+        // Insert new cost
+        const { error } = await supabase.from('costs').insert(costData);
 
-      toast.success('Cost added successfully!');
+        if (error) throw error;
+        toast.success('Cost added successfully!');
+      }
+
       resetForm();
       onOpenChange(false);
       onSuccess();
@@ -186,15 +240,15 @@ export default function AddCostSheet({
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2 font-heading">
             <Icon className="w-5 h-5 text-destructive" />
-            ADD {costTypeLabels[costType as keyof typeof costTypeLabels].toUpperCase()} COST
+            {editingCost ? 'EDIT' : 'ADD'} {costTypeLabels[costType as keyof typeof costTypeLabels].toUpperCase()} COST
           </SheetTitle>
         </SheetHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 mt-6">
-          {/* Cost Type Selector */}
+          {/* Cost Type Selector - disabled when editing */}
           <div className="space-y-2">
             <Label>Cost Type</Label>
-            <Select value={costType} onValueChange={setCostType}>
+            <Select value={costType} onValueChange={setCostType} disabled={!!editingCost}>
               <SelectTrigger className="bg-input border-border">
                 <SelectValue />
               </SelectTrigger>
@@ -444,7 +498,7 @@ export default function AddCostSheet({
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin mr-2" />
             ) : null}
-            Add Cost
+            {editingCost ? 'Update Cost' : 'Add Cost'}
           </Button>
         </form>
       </SheetContent>

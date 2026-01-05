@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -14,10 +14,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { Loader2, DollarSign } from 'lucide-react';
 
+interface IncomeData {
+  id: string;
+  amount: number;
+  description: string | null;
+  invoice_reference: string | null;
+  date: string;
+}
+
 interface AddIncomeSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
+  editingIncome?: IncomeData | null;
   onSuccess: () => void;
 }
 
@@ -25,6 +34,7 @@ export default function AddIncomeSheet({
   open,
   onOpenChange,
   projectId,
+  editingIncome,
   onSuccess,
 }: AddIncomeSheetProps) {
   const { user } = useAuth();
@@ -33,6 +43,23 @@ export default function AddIncomeSheet({
   const [description, setDescription] = useState('');
   const [invoiceReference, setInvoiceReference] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // Initialize form when editing
+  useEffect(() => {
+    if (editingIncome) {
+      setAmount(String(editingIncome.amount));
+      setDescription(editingIncome.description || '');
+      setInvoiceReference(editingIncome.invoice_reference || '');
+      setDate(editingIncome.date);
+    }
+  }, [editingIncome]);
+
+  // Reset form when closed
+  useEffect(() => {
+    if (!open) {
+      resetForm();
+    }
+  }, [open]);
 
   const resetForm = () => {
     setAmount('');
@@ -52,18 +79,30 @@ export default function AddIncomeSheet({
     setLoading(true);
 
     try {
-      const { error } = await supabase.from('income').insert({
+      const incomeData = {
         project_id: projectId,
         amount: parseFloat(amount),
         description: description.trim() || null,
         invoice_reference: invoiceReference.trim() || null,
         date,
         created_by: user!.id,
-      });
+      };
 
-      if (error) throw error;
+      if (editingIncome) {
+        const { error } = await supabase
+          .from('income')
+          .update(incomeData)
+          .eq('id', editingIncome.id);
 
-      toast.success('Income added successfully!');
+        if (error) throw error;
+        toast.success('Income updated successfully!');
+      } else {
+        const { error } = await supabase.from('income').insert(incomeData);
+
+        if (error) throw error;
+        toast.success('Income added successfully!');
+      }
+
       resetForm();
       onOpenChange(false);
       onSuccess();
@@ -80,7 +119,7 @@ export default function AddIncomeSheet({
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2 font-heading">
             <DollarSign className="w-5 h-5 text-success" />
-            ADD CLIENT PAYMENT
+            {editingIncome ? 'EDIT' : 'ADD'} CLIENT PAYMENT
           </SheetTitle>
         </SheetHeader>
 
@@ -148,7 +187,7 @@ export default function AddIncomeSheet({
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin mr-2" />
             ) : null}
-            Add Income
+            {editingIncome ? 'Update Income' : 'Add Income'}
           </Button>
         </form>
       </SheetContent>
