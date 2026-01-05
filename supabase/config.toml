@@ -1,7 +1,7 @@
 project_id = "jkdnlfaetkqrhdqtqlho"
 
 [functions.send-invitation]
-verify_jwt = true
+verify_jwt = false
 
 [functions.send-password-reset]
 verify_jwt = false

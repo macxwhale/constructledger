@@ -99,7 +99,8 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      const emailValidation = z.string().email().safeParse(email);
+      const normalizedEmail = email.trim().toLowerCase();
+      const emailValidation = z.string().email().safeParse(normalizedEmail);
       if (!emailValidation.success) {
         toast.error('Please enter a valid email address');
         setLoading(false);
@@ -108,7 +109,7 @@ export default function Auth() {
 
       // Call custom edge function for password reset
       const { data, error } = await supabase.functions.invoke('send-password-reset', {
-        body: { email, appUrl: window.location.origin },
+        body: { email: normalizedEmail, appUrl: window.location.origin },
       });
 
       if (error) throw error;
