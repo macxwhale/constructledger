@@ -40,6 +40,12 @@ interface CostData {
   invoice_reference?: string | null;
 }
 
+interface Material {
+  id: string;
+  name: string;
+  default_unit_cost: number | null;
+}
+
 interface AddCostSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -77,6 +83,7 @@ export default function AddCostSheet({
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [materials, setMaterials] = useState<Material[]>([]);
 
   // Materials fields
   const [itemName, setItemName] = useState('');
@@ -128,6 +135,34 @@ export default function AddCostSheet({
       resetForm();
     }
   }, [open]);
+
+  // Fetch materials for dropdown
+  useEffect(() => {
+    if (costType === 'materials' && user) {
+      const fetchMaterials = async () => {
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('company_id')
+            .eq('user_id', user.id)
+            .single();
+
+          if (profile?.company_id) {
+            const { data } = await supabase
+              .from('materials')
+              .select('id, name, default_unit_cost')
+              .eq('company_id', profile.company_id)
+              .order('name');
+            setMaterials(data || []);
+          }
+        } catch (e) {
+          console.error('Failed to fetch materials', e);
+        }
+      };
+      
+      fetchMaterials();
+    }
+  }, [costType, user]);
 
   // Calculate amount for labor and equipment
   useEffect(() => {
@@ -294,16 +329,41 @@ export default function AddCostSheet({
           {costType === 'materials' && (
             <>
               <div className="space-y-2">
-                <Label htmlFor="itemName">Item Name *</Label>
-                <Input
-                  id="itemName"
-                  placeholder="e.g. Logs, Cables, Cement, Nails..."
-                  value={itemName}
-                  onChange={(e) => setItemName(e.target.value)}
-                  className="bg-input border-border"
+                <Label htmlFor="itemName">Material *</Label>
+                <Select 
+                  value={itemName} 
+                  onValueChange={(val) => {
+                    setItemName(val);
+                    const mat = materials.find(m => m.name === val);
+                    if (mat && mat.default_unit_cost !== null && !unitCost) {
+                      setUnitCost(String(mat.default_unit_cost));
+                    }
+                  }} 
                   disabled={loading}
-                  required
-                />
+                >
+                  <SelectTrigger className="bg-input border-border" id="itemName">
+                    <SelectValue placeholder="Select a material" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {materials.length === 0 ? (
+                      <SelectItem value="_empty" disabled>No materials in catalogue</SelectItem>
+                    ) : (
+                      <>
+                        {materials.map(mat => (
+                          <SelectItem key={mat.id} value={mat.name}>{mat.name}</SelectItem>
+                        ))}
+                        {editingCost && itemName && !materials.find(m => m.name === itemName) && (
+                          <SelectItem value={itemName}>{itemName} (Legacy Item)</SelectItem>
+                        )}
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+                {materials.length === 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Add materials from the Materials menu before logging costs.
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="supplier">Supplier</Label>

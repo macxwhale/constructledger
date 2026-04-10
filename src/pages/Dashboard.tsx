@@ -17,6 +17,7 @@ import {
   Pencil,
   Trash2,
   MoreVertical,
+  Package,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -211,6 +212,17 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Link to="/materials">
+                <Package className="w-4 h-4 mr-2" />
+                Materials
+              </Link>
+            </Button>
             <Button
               variant="ghost"
               size="sm"
