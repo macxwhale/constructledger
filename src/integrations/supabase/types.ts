@@ -200,6 +200,44 @@ export type Database = {
           },
         ]
       }
+      materials: {
+        Row: {
+          company_id: string
+          created_at: string
+          default_unit_cost: number | null
+          id: string
+          name: string
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          default_unit_cost?: number | null
+          id?: string
+          name: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          default_unit_cost?: number | null
+          id?: string
+          name?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "materials_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       password_reset_tokens: {
         Row: {
           created_at: string
