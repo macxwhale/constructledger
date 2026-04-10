@@ -27,9 +27,9 @@ export default function CostBreakdownChart({ costsByType }: CostBreakdownChartPr
   const total = Object.values(costsByType).reduce((sum, val) => sum + val, 0);
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-KE', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'KES',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(value);

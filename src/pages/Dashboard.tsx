@@ -18,6 +18,7 @@ import {
   Trash2,
   MoreVertical,
   Package,
+  BarChart3,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -212,6 +213,17 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Link to="/reports">
+                <BarChart3 className="w-4 h-4 mr-2" />
+                Reports
+              </Link>
+            </Button>
             <Button
               variant="ghost"
               size="sm"

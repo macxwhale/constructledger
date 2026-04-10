@@ -11,6 +11,7 @@ import NewProject from "./pages/NewProject";
 import Project from "./pages/Project";
 import Settings from "./pages/Settings";
 import Materials from "./pages/Materials";
+import Reports from "./pages/Reports";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/projects/:id" element={<Project />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/materials" element={<Materials />} />
+            <Route path="/reports" element={<Reports />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
