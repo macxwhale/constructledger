@@ -274,6 +274,7 @@ export default function AddCostSheet({
       onOpenChange(false);
       onSuccess();
     } catch (error) {
+      console.error('Failed to add cost:', error);
       toast.error('Failed to add cost');
     } finally {
       setLoading(false);
