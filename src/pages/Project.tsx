@@ -93,10 +93,12 @@ export default function ProjectPage() {
   const netProfit = totalIncome - totalCosts;
 
   const costsByType = {
-    materials: costs.filter((c) => c.cost_type === 'materials').reduce((sum, c) => sum + Number(c.amount), 0),
-    labor: costs.filter((c) => c.cost_type === 'labor').reduce((sum, c) => sum + Number(c.amount), 0),
+    materials: costs.filter((c) => c.cost_type === 'materials').reduce((sum, c) => sum + (Number(c.amount) - Number(c.labor_cost || 0) - Number(c.transport_cost || 0)), 0),
+    labor: costs.filter((c) => c.cost_type === 'labor').reduce((sum, c) => sum + Number(c.amount), 0) + 
+           costs.filter((c) => c.cost_type === 'materials').reduce((sum, c) => sum + Number(c.labor_cost || 0), 0),
     equipment: costs.filter((c) => c.cost_type === 'equipment').reduce((sum, c) => sum + Number(c.amount), 0),
     subcontractors: costs.filter((c) => c.cost_type === 'subcontractors').reduce((sum, c) => sum + Number(c.amount), 0),
+    transport: costs.reduce((sum, c) => sum + Number(c.transport_cost || 0), 0),
   };
 
   const formatCurrency = (amount: number) => {
@@ -318,6 +320,14 @@ export default function ProjectPage() {
                     {formatCurrency(costsByType.subcontractors)}
                   </span>
                 </Button>
+
+                <div className="flex items-center p-3 rounded-md border border-border bg-secondary/10">
+                  <Truck className="w-4 h-4 mr-3 text-chart-5" style={{ color: 'hsl(330, 80%, 60%)' }} />
+                  <span className="text-sm">Transport</span>
+                  <span className="ml-auto text-muted-foreground text-sm font-medium">
+                    {formatCurrency(costsByType.transport)}
+                  </span>
+                </div>
               </div>
             </div>
           </div>

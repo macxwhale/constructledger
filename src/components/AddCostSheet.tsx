@@ -38,6 +38,8 @@ interface CostData {
   daily_rate?: number | null;
   contractor_name?: string | null;
   invoice_reference?: string | null;
+  labor_cost?: number | null;
+  transport_cost?: number | null;
 }
 
 interface Material {
@@ -90,6 +92,8 @@ export default function AddCostSheet({
   const [supplier, setSupplier] = useState('');
   const [quantity, setQuantity] = useState('');
   const [unitCost, setUnitCost] = useState('');
+  const [materialLaborCost, setMaterialLaborCost] = useState('');
+  const [transportCost, setTransportCost] = useState('');
 
   // Labor fields
   const [workerName, setWorkerName] = useState('');
@@ -124,6 +128,8 @@ export default function AddCostSheet({
       setDailyRate(editingCost.daily_rate ? String(editingCost.daily_rate) : '');
       setContractorName(editingCost.contractor_name || '');
       setInvoiceReference(editingCost.invoice_reference || '');
+      setMaterialLaborCost(editingCost.labor_cost ? String(editingCost.labor_cost) : '');
+      setTransportCost(editingCost.transport_cost ? String(editingCost.transport_cost) : '');
     } else if (defaultCostType) {
       setCostType(defaultCostType);
     }
@@ -171,9 +177,12 @@ export default function AddCostSheet({
     } else if (costType === 'equipment' && rentalDays && dailyRate) {
       setAmount((parseFloat(rentalDays) * parseFloat(dailyRate)).toFixed(2));
     } else if (costType === 'materials' && quantity && unitCost) {
-      setAmount((parseFloat(quantity) * parseFloat(unitCost)).toFixed(2));
+      const baseAmount = parseFloat(quantity) * parseFloat(unitCost);
+      const extraLabor = parseFloat(materialLaborCost || '0');
+      const extraTransport = parseFloat(transportCost || '0');
+      setAmount((baseAmount + extraLabor + extraTransport).toFixed(2));
     }
-  }, [costType, hours, hourlyRate, rentalDays, dailyRate, quantity, unitCost]);
+  }, [costType, hours, hourlyRate, rentalDays, dailyRate, quantity, unitCost, materialLaborCost, transportCost]);
 
   const resetForm = () => {
     setAmount('');
@@ -191,6 +200,8 @@ export default function AddCostSheet({
     setDailyRate('');
     setContractorName('');
     setInvoiceReference('');
+    setMaterialLaborCost('');
+    setTransportCost('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -238,6 +249,8 @@ export default function AddCostSheet({
         daily_rate: costType === 'equipment' && dailyRate ? parseFloat(dailyRate) : null,
         contractor_name: costType === 'subcontractors' ? (contractorName || null) : null,
         invoice_reference: costType === 'subcontractors' ? (invoiceReference || null) : null,
+        labor_cost: costType === 'materials' && materialLaborCost ? parseFloat(materialLaborCost) : null,
+        transport_cost: costType === 'materials' && transportCost ? parseFloat(transportCost) : null,
       };
 
       if (editingCost) {
@@ -404,6 +417,34 @@ export default function AddCostSheet({
                   />
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="materialLaborCost">Extra Labor Cost (KSH)</Label>
+                  <Input
+                    id="materialLaborCost"
+                    type="number"
+                    step="0.01"
+                    placeholder="0"
+                    value={materialLaborCost}
+                    onChange={(e) => setMaterialLaborCost(e.target.value)}
+                    className="bg-input border-border"
+                    disabled={loading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="transportCost">Transport Cost (KSH)</Label>
+                  <Input
+                    id="transportCost"
+                    type="number"
+                    step="0.01"
+                    placeholder="0"
+                    value={transportCost}
+                    onChange={(e) => setTransportCost(e.target.value)}
+                    className="bg-input border-border"
+                    disabled={loading}
+                  />
+                </div>
+              </div>
             </>
           )}
 
@@ -422,12 +463,12 @@ export default function AddCostSheet({
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="hours">Hours</Label>
+                  <Label htmlFor="hours">Days</Label>
                   <Input
                     id="hours"
                     type="number"
                     step="0.5"
-                    placeholder="8"
+                    placeholder="1"
                     value={hours}
                     onChange={(e) => setHours(e.target.value)}
                     className="bg-input border-border"
@@ -435,12 +476,12 @@ export default function AddCostSheet({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="hourlyRate">Hourly Rate (KSH)</Label>
+                  <Label htmlFor="hourlyRate">Daily Rate (KSH)</Label>
                   <Input
                     id="hourlyRate"
                     type="number"
                     step="0.01"
-                    placeholder="500"
+                    placeholder="1500"
                     value={hourlyRate}
                     onChange={(e) => setHourlyRate(e.target.value)}
                     className="bg-input border-border"

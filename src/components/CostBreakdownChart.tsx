@@ -6,6 +6,7 @@ interface CostBreakdownChartProps {
     labor: number;
     equipment: number;
     subcontractors: number;
+    transport: number;
   };
 }
 
@@ -14,6 +15,7 @@ const COLORS = [
   'hsl(187, 92%, 48%)',   // labor - cyan
   'hsl(25, 95%, 53%)',    // equipment - orange
   'hsl(280, 65%, 60%)',   // subcontractors - purple
+  'hsl(330, 80%, 60%)',   // transport - pink/fuschia
 ];
 
 export default function CostBreakdownChart({ costsByType }: CostBreakdownChartProps) {
@@ -22,6 +24,7 @@ export default function CostBreakdownChart({ costsByType }: CostBreakdownChartPr
     { name: 'Labor', value: costsByType.labor, fill: COLORS[1] },
     { name: 'Equipment', value: costsByType.equipment, fill: COLORS[2] },
     { name: 'Subcontractors', value: costsByType.subcontractors, fill: COLORS[3] },
+    { name: 'Transport', value: costsByType.transport, fill: COLORS[4] },
   ];
 
   const total = Object.values(costsByType).reduce((sum, val) => sum + val, 0);

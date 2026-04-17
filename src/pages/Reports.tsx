@@ -25,6 +25,7 @@ interface ReportsData {
     labor: number;
     equipment: number;
     subcontractors: number;
+    transport: number;
   };
   projectPerformance: {
     name: string;
@@ -57,7 +58,7 @@ export default function Reports() {
       // ONLY the records associated with the user's company.
       const [projectsResult, costsResult, incomeResult] = await Promise.all([
         supabase.from('projects').select('id, name'),
-        supabase.from('costs').select('amount, cost_type, project_id'),
+        supabase.from('costs').select('amount, cost_type, project_id, labor_cost, transport_cost'),
         supabase.from('income').select('amount, project_id')
       ]);
 
@@ -74,10 +75,12 @@ export default function Reports() {
       const totalCosts = costs.reduce((sum, c) => sum + Number(c.amount), 0);
       
       const costsByType = {
-        materials: costs.filter(c => c.cost_type === 'materials').reduce((sum, c) => sum + Number(c.amount), 0),
-        labor: costs.filter(c => c.cost_type === 'labor').reduce((sum, c) => sum + Number(c.amount), 0),
+        materials: costs.filter(c => c.cost_type === 'materials').reduce((sum, c) => sum + (Number(c.amount) - Number(c.labor_cost || 0) - Number(c.transport_cost || 0)), 0),
+        labor: costs.filter(c => c.cost_type === 'labor').reduce((sum, c) => sum + Number(c.amount), 0) + 
+               costs.filter(c => c.cost_type === 'materials').reduce((sum, c) => sum + Number(c.labor_cost || 0), 0),
         equipment: costs.filter(c => c.cost_type === 'equipment').reduce((sum, c) => sum + Number(c.amount), 0),
         subcontractors: costs.filter(c => c.cost_type === 'subcontractors').reduce((sum, c) => sum + Number(c.amount), 0),
+        transport: costs.reduce((sum, c) => sum + Number(c.transport_cost || 0), 0),
       };
 
       // Per-project performance mapping
