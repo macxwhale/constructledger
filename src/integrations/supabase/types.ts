@@ -50,12 +50,10 @@ export type Database = {
           hours: number | null
           id: string
           invoice_reference: string | null
-          labor_cost: number | null
           project_id: string
           quantity: number | null
           rental_days: number | null
           supplier: string | null
-          transport_cost: number | null
           unit_cost: number | null
           updated_at: string
           worker_name: string | null
@@ -74,12 +72,10 @@ export type Database = {
           hours?: number | null
           id?: string
           invoice_reference?: string | null
-          labor_cost?: number | null
           project_id: string
           quantity?: number | null
           rental_days?: number | null
           supplier?: string | null
-          transport_cost?: number | null
           unit_cost?: number | null
           updated_at?: string
           worker_name?: string | null
@@ -98,12 +94,10 @@ export type Database = {
           hours?: number | null
           id?: string
           invoice_reference?: string | null
-          labor_cost?: number | null
           project_id?: string
           quantity?: number | null
           rental_days?: number | null
           supplier?: string | null
-          transport_cost?: number | null
           unit_cost?: number | null
           updated_at?: string
           worker_name?: string | null
