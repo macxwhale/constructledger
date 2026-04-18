@@ -23,7 +23,7 @@ SET row_security = off;
 -- Name: public; Type: SCHEMA; Schema: -; Owner: -
 --
 
-CREATE SCHEMA "public";
+CREATE SCHEMA IF NOT EXISTS "public";
 
 
 --
@@ -37,7 +37,7 @@ COMMENT ON SCHEMA "public" IS 'standard public schema';
 -- Name: app_role; Type: TYPE; Schema: public; Owner: -
 --
 
-CREATE TYPE "public"."app_role" AS ENUM (
+CREATE TYPE IF NOT EXISTS "public"."app_role" AS ENUM (
     'manager',
     'viewer'
 );
@@ -47,7 +47,7 @@ CREATE TYPE "public"."app_role" AS ENUM (
 -- Name: cost_type; Type: TYPE; Schema: public; Owner: -
 --
 
-CREATE TYPE "public"."cost_type" AS ENUM (
+CREATE TYPE IF NOT EXISTS "public"."cost_type" AS ENUM (
     'materials',
     'labor',
     'equipment',
@@ -59,7 +59,7 @@ CREATE TYPE "public"."cost_type" AS ENUM (
 -- Name: accept_invitation("uuid"); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION "public"."accept_invitation"("_token" "uuid") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."accept_invitation"("_token" "uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -118,7 +118,7 @@ $$;
 -- Name: get_invitation_details("uuid"); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION "public"."get_invitation_details"("_token" "uuid") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."get_invitation_details"("_token" "uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -157,7 +157,7 @@ $$;
 -- Name: get_user_company_id("uuid"); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION "public"."get_user_company_id"("_user_id" "uuid") RETURNS "uuid"
+CREATE OR REPLACE FUNCTION "public"."get_user_company_id"("_user_id" "uuid") RETURNS "uuid"
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -169,7 +169,7 @@ $$;
 -- Name: handle_new_user_signup("text", "text"); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION "public"."handle_new_user_signup"("_company_name" "text", "_full_name" "text") RETURNS "uuid"
+CREATE OR REPLACE FUNCTION "public"."handle_new_user_signup"("_company_name" "text", "_full_name" "text") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -198,7 +198,7 @@ $$;
 -- Name: has_role("uuid", "uuid", "public"."app_role"); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION "public"."has_role"("_user_id" "uuid", "_company_id" "uuid", "_role" "public"."app_role") RETURNS boolean
+CREATE OR REPLACE FUNCTION "public"."has_role"("_user_id" "uuid", "_company_id" "uuid", "_role" "public"."app_role") RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -216,7 +216,7 @@ $$;
 -- Name: update_updated_at_column(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION "public"."update_updated_at_column"() RETURNS "trigger"
+CREATE OR REPLACE FUNCTION "public"."update_updated_at_column"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     SET "search_path" TO 'public'
     AS $$
@@ -233,7 +233,7 @@ SET default_table_access_method = "heap";
 -- Name: companies; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE "public"."companies" (
+CREATE TABLE IF NOT EXISTS "public"."companies" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "name" "text" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
@@ -245,7 +245,7 @@ CREATE TABLE "public"."companies" (
 -- Name: costs; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE "public"."costs" (
+CREATE TABLE IF NOT EXISTS "public"."costs" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "project_id" "uuid" NOT NULL,
     "cost_type" "public"."cost_type" NOT NULL,
@@ -289,7 +289,7 @@ COMMENT ON COLUMN "public"."costs"."labor_cost" IS 'Extra labor/handling cost sp
 -- Name: income; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE "public"."income" (
+CREATE TABLE IF NOT EXISTS "public"."income" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "project_id" "uuid" NOT NULL,
     "amount" numeric(12,2) NOT NULL,
@@ -306,7 +306,7 @@ CREATE TABLE "public"."income" (
 -- Name: invitations; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE "public"."invitations" (
+CREATE TABLE IF NOT EXISTS "public"."invitations" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "company_id" "uuid" NOT NULL,
     "email" "text" NOT NULL,
@@ -323,7 +323,7 @@ CREATE TABLE "public"."invitations" (
 -- Name: materials; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE "public"."materials" (
+CREATE TABLE IF NOT EXISTS "public"."materials" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "company_id" "uuid" NOT NULL,
     "name" "text" NOT NULL,
@@ -338,7 +338,7 @@ CREATE TABLE "public"."materials" (
 -- Name: password_reset_tokens; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE "public"."password_reset_tokens" (
+CREATE TABLE IF NOT EXISTS "public"."password_reset_tokens" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "email" "text" NOT NULL,
     "token" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
@@ -352,7 +352,7 @@ CREATE TABLE "public"."password_reset_tokens" (
 -- Name: profiles; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE "public"."profiles" (
+CREATE TABLE IF NOT EXISTS "public"."profiles" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "user_id" "uuid" NOT NULL,
     "company_id" "uuid" NOT NULL,
@@ -366,7 +366,7 @@ CREATE TABLE "public"."profiles" (
 -- Name: projects; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE "public"."projects" (
+CREATE TABLE IF NOT EXISTS "public"."projects" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "company_id" "uuid" NOT NULL,
     "name" "text" NOT NULL,
@@ -383,7 +383,7 @@ CREATE TABLE "public"."projects" (
 -- Name: user_roles; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE "public"."user_roles" (
+CREATE TABLE IF NOT EXISTS "public"."user_roles" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "user_id" "uuid" NOT NULL,
     "company_id" "uuid" NOT NULL,
@@ -738,140 +738,140 @@ ALTER TABLE ONLY "public"."user_roles"
 -- Name: idx_costs_project_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX "idx_costs_project_id" ON "public"."costs" USING "btree" ("project_id");
+CREATE INDEX IF NOT EXISTS "idx_costs_project_id" ON "public"."costs" USING "btree" ("project_id");
 
 
 --
 -- Name: idx_costs_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX "idx_costs_type" ON "public"."costs" USING "btree" ("cost_type");
+CREATE INDEX IF NOT EXISTS "idx_costs_type" ON "public"."costs" USING "btree" ("cost_type");
 
 
 --
 -- Name: idx_income_project_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX "idx_income_project_id" ON "public"."income" USING "btree" ("project_id");
+CREATE INDEX IF NOT EXISTS "idx_income_project_id" ON "public"."income" USING "btree" ("project_id");
 
 
 --
 -- Name: idx_invitations_company_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX "idx_invitations_company_id" ON "public"."invitations" USING "btree" ("company_id");
+CREATE INDEX IF NOT EXISTS "idx_invitations_company_id" ON "public"."invitations" USING "btree" ("company_id");
 
 
 --
 -- Name: idx_invitations_email; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX "idx_invitations_email" ON "public"."invitations" USING "btree" ("email");
+CREATE INDEX IF NOT EXISTS "idx_invitations_email" ON "public"."invitations" USING "btree" ("email");
 
 
 --
 -- Name: idx_invitations_expires_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX "idx_invitations_expires_at" ON "public"."invitations" USING "btree" ("expires_at");
+CREATE INDEX IF NOT EXISTS "idx_invitations_expires_at" ON "public"."invitations" USING "btree" ("expires_at");
 
 
 --
 -- Name: idx_invitations_token; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX "idx_invitations_token" ON "public"."invitations" USING "btree" ("token");
+CREATE INDEX IF NOT EXISTS "idx_invitations_token" ON "public"."invitations" USING "btree" ("token");
 
 
 --
 -- Name: idx_password_reset_tokens_expires; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX "idx_password_reset_tokens_expires" ON "public"."password_reset_tokens" USING "btree" ("expires_at");
+CREATE INDEX IF NOT EXISTS "idx_password_reset_tokens_expires" ON "public"."password_reset_tokens" USING "btree" ("expires_at");
 
 
 --
 -- Name: idx_password_reset_tokens_token; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX "idx_password_reset_tokens_token" ON "public"."password_reset_tokens" USING "btree" ("token");
+CREATE INDEX IF NOT EXISTS "idx_password_reset_tokens_token" ON "public"."password_reset_tokens" USING "btree" ("token");
 
 
 --
 -- Name: idx_profiles_company_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX "idx_profiles_company_id" ON "public"."profiles" USING "btree" ("company_id");
+CREATE INDEX IF NOT EXISTS "idx_profiles_company_id" ON "public"."profiles" USING "btree" ("company_id");
 
 
 --
 -- Name: idx_profiles_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX "idx_profiles_user_id" ON "public"."profiles" USING "btree" ("user_id");
+CREATE INDEX IF NOT EXISTS "idx_profiles_user_id" ON "public"."profiles" USING "btree" ("user_id");
 
 
 --
 -- Name: idx_projects_company_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX "idx_projects_company_id" ON "public"."projects" USING "btree" ("company_id");
+CREATE INDEX IF NOT EXISTS "idx_projects_company_id" ON "public"."projects" USING "btree" ("company_id");
 
 
 --
 -- Name: idx_user_roles_company_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX "idx_user_roles_company_id" ON "public"."user_roles" USING "btree" ("company_id");
+CREATE INDEX IF NOT EXISTS "idx_user_roles_company_id" ON "public"."user_roles" USING "btree" ("company_id");
 
 
 --
 -- Name: idx_user_roles_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX "idx_user_roles_user_id" ON "public"."user_roles" USING "btree" ("user_id");
+CREATE INDEX IF NOT EXISTS "idx_user_roles_user_id" ON "public"."user_roles" USING "btree" ("user_id");
 
 
 --
 -- Name: companies update_companies_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER "update_companies_updated_at" BEFORE UPDATE ON "public"."companies" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+CREATE OR REPLACE TRIGGER "update_companies_updated_at" BEFORE UPDATE ON "public"."companies" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
 
 --
 -- Name: costs update_costs_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER "update_costs_updated_at" BEFORE UPDATE ON "public"."costs" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+CREATE OR REPLACE TRIGGER "update_costs_updated_at" BEFORE UPDATE ON "public"."costs" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
 
 --
 -- Name: income update_income_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER "update_income_updated_at" BEFORE UPDATE ON "public"."income" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+CREATE OR REPLACE TRIGGER "update_income_updated_at" BEFORE UPDATE ON "public"."income" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
 
 --
 -- Name: materials update_materials_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER "update_materials_updated_at" BEFORE UPDATE ON "public"."materials" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+CREATE OR REPLACE TRIGGER "update_materials_updated_at" BEFORE UPDATE ON "public"."materials" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
 
 --
 -- Name: profiles update_profiles_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER "update_profiles_updated_at" BEFORE UPDATE ON "public"."profiles" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+CREATE OR REPLACE TRIGGER "update_profiles_updated_at" BEFORE UPDATE ON "public"."profiles" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
 
 --
 -- Name: projects update_projects_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER "update_projects_updated_at" BEFORE UPDATE ON "public"."projects" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+CREATE OR REPLACE TRIGGER "update_projects_updated_at" BEFORE UPDATE ON "public"."projects" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
 
 --
