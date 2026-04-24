@@ -20,6 +20,8 @@ import {
   Send,
   Clock,
   X,
+  Briefcase,
+  Plus,
 } from 'lucide-react';
 import {
   Card,
@@ -91,6 +93,13 @@ export default function Settings() {
   const [invitationToCancel, setInvitationToCancel] = useState<PendingInvitation | null>(null);
   const [removing, setRemoving] = useState(false);
 
+  // Departments state
+  const [departments, setDepartments] = useState<Tables<'departments'>[]>([]);
+  const [newDepartmentName, setNewDepartmentName] = useState('');
+  const [loadingDepartments, setLoadingDepartments] = useState(true);
+  const [addingDepartment, setAddingDepartment] = useState(false);
+  const [departmentToDelete, setDepartmentToDelete] = useState<Tables<'departments'> | null>(null);
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth');
@@ -102,6 +111,7 @@ export default function Settings() {
       fetchProfileAndCompany();
       fetchTeamMembers();
       fetchPendingInvitations();
+      fetchDepartments();
       checkIfManager();
     }
   }, [user]);
@@ -227,6 +237,84 @@ export default function Settings() {
     } catch (error) {
       console.error('Failed to load invitations:', error);
       toast.error('Failed to load pending invitations');
+    }
+  };
+
+  const fetchDepartments = async () => {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('user_id', user!.id)
+        .single();
+
+      if (!profile?.company_id) return;
+
+      const { data, error } = await supabase
+        .from('departments')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .order('name');
+
+      if (error) throw error;
+      setDepartments(data || []);
+    } catch (error) {
+      console.error('Failed to load departments:', error);
+    } finally {
+      setLoadingDepartments(false);
+    }
+  };
+
+  const handleAddDepartment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDepartmentName.trim() || !companyId) return;
+
+    setAddingDepartment(true);
+    try {
+      const { data, error } = await supabase
+        .from('departments')
+        .insert({
+          company_id: companyId,
+          name: newDepartmentName.trim(),
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast.success('Department added successfully');
+      setNewDepartmentName('');
+      setDepartments((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+    } catch (error: any) {
+      if (error.code === '23505') {
+        toast.error('A department with this name already exists');
+      } else {
+        toast.error('Failed to add department');
+      }
+    } finally {
+      setAddingDepartment(false);
+    }
+  };
+
+  const handleDeleteDepartment = async () => {
+    if (!departmentToDelete) return;
+
+    setRemoving(true);
+    try {
+      const { error } = await supabase
+        .from('departments')
+        .delete()
+        .eq('id', departmentToDelete.id);
+
+      if (error) throw error;
+
+      toast.success('Department deleted successfully');
+      setDepartments((prev) => prev.filter((d) => d.id !== departmentToDelete.id));
+    } catch (error) {
+      toast.error('Failed to delete department');
+    } finally {
+      setRemoving(false);
+      setDepartmentToDelete(null);
     }
   };
 
@@ -469,6 +557,73 @@ export default function Settings() {
             Save Changes
           </Button>
 
+          {/* Department Management */}
+          <Card className="industrial-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 font-heading">
+                <Briefcase className="w-5 h-5" />
+                DEPARTMENTS
+              </CardTitle>
+              <CardDescription>
+                Categorize your costs by construction phase or department
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {isManager && (
+                <form onSubmit={handleAddDepartment} className="flex gap-2">
+                  <Input
+                    placeholder="e.g., Electrical, Plumbing"
+                    value={newDepartmentName}
+                    onChange={(e) => setNewDepartmentName(e.target.value)}
+                    disabled={addingDepartment}
+                  />
+                  <Button type="submit" disabled={addingDepartment || !newDepartmentName.trim()}>
+                    {addingDepartment ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Plus className="w-4 h-4 mr-2" />
+                    )}
+                    Add
+                  </Button>
+                </form>
+              )}
+
+              <div className="space-y-2">
+                {loadingDepartments ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                ) : departments.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No departments added yet
+                  </p>
+                ) : (
+                  <div className="grid gap-2">
+                    {departments.map((dept) => (
+                      <div
+                        key={dept.id}
+                        className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg group"
+                      >
+                        <span className="font-medium">{dept.name}</span>
+                        {isManager && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => setDepartmentToDelete(dept)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Invite Team Members (Managers only) */}
           {isManager && (
             <Card className="industrial-card">
@@ -678,6 +833,32 @@ export default function Settings() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {removing ? 'Removing...' : 'Remove'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Department Dialog */}
+      <AlertDialog
+        open={!!departmentToDelete}
+        onOpenChange={() => setDepartmentToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Department?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the "{departmentToDelete?.name}" department? 
+              This will remove the association from any existing costs, but will not delete the costs themselves.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteDepartment}
+              disabled={removing}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {removing ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

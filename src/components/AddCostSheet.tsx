@@ -19,7 +19,22 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Loader2, Package, Users, Truck, Hammer } from 'lucide-react';
+import { 
+  Loader2, 
+  Package, 
+  Users, 
+  Truck, 
+  Hammer, 
+  Briefcase,
+  Plus
+} from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 interface CostData {
   id: string;
@@ -40,6 +55,7 @@ interface CostData {
   invoice_reference?: string | null;
   labor_cost?: number | null;
   transport_cost?: number | null;
+  department_id?: string | null;
 }
 
 interface Material {
@@ -85,6 +101,8 @@ export default function AddCostSheet({
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [departmentId, setDepartmentId] = useState<string | null>(null);
+  const [departments, setDepartments] = useState<Tables<'departments'>[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
 
   // Materials fields
@@ -109,6 +127,17 @@ export default function AddCostSheet({
   const [contractorName, setContractorName] = useState('');
   const [invoiceReference, setInvoiceReference] = useState('');
 
+  // Quick Add state
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [showAddDeptDialog, setShowAddDeptDialog] = useState(false);
+  const [newDeptName, setNewDeptName] = useState('');
+  const [addingDept, setAddingDept] = useState(false);
+
+  const [showAddMaterialDialog, setShowAddMaterialDialog] = useState(false);
+  const [newMaterialName, setNewMaterialName] = useState('');
+  const [newMaterialUnitCost, setNewMaterialUnitCost] = useState('');
+  const [addingMaterial, setAddingMaterial] = useState(false);
+
   // Initialize form when editing
   useEffect(() => {
     if (editingCost) {
@@ -130,6 +159,7 @@ export default function AddCostSheet({
       setInvoiceReference(editingCost.invoice_reference || '');
       setMaterialLaborCost(editingCost.labor_cost ? String(editingCost.labor_cost) : '');
       setTransportCost(editingCost.transport_cost ? String(editingCost.transport_cost) : '');
+      setDepartmentId(editingCost.department_id || null);
     } else if (defaultCostType) {
       setCostType(defaultCostType);
     }
@@ -144,30 +174,42 @@ export default function AddCostSheet({
 
   // Fetch materials for dropdown
   useEffect(() => {
-    if (costType === 'materials' && user) {
-      const fetchMaterials = async () => {
-        try {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('company_id')
-            .eq('user_id', user.id)
-            .single();
+    const fetchData = async () => {
+      if (!user) return;
+      
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('company_id')
+          .eq('user_id', user.id)
+          .single();
 
-          if (profile?.company_id) {
-            const { data } = await supabase
+        if (profile?.company_id) {
+          // Fetch departments (common for all types)
+          const { data: depts } = await supabase
+            .from('departments')
+            .select('*')
+            .eq('company_id', profile.company_id)
+            .order('name');
+          setDepartments(depts || []);
+          setCompanyId(profile.company_id);
+
+          // Fetch materials only if costType is materials
+          if (costType === 'materials') {
+            const { data: mats } = await supabase
               .from('materials')
               .select('id, name, default_unit_cost')
               .eq('company_id', profile.company_id)
               .order('name');
-            setMaterials(data || []);
+            setMaterials(mats || []);
           }
-        } catch (e) {
-          console.error('Failed to fetch materials', e);
         }
-      };
-      
-      fetchMaterials();
-    }
+      } catch (e) {
+        console.error('Failed to fetch data', e);
+      }
+    };
+    
+    fetchData();
   }, [costType, user]);
 
   // Calculate amount for labor and equipment
@@ -202,6 +244,85 @@ export default function AddCostSheet({
     setInvoiceReference('');
     setMaterialLaborCost('');
     setTransportCost('');
+    setDepartmentId(null);
+    setNewDeptName('');
+    setNewMaterialName('');
+    setNewMaterialUnitCost('');
+  };
+
+  const handleQuickAddDepartment = async () => {
+    if (!newDeptName.trim() || !companyId) return;
+
+    setAddingDept(true);
+    try {
+      const { data, error } = await supabase
+        .from('departments')
+        .insert({
+          company_id: companyId,
+          name: newDeptName.trim(),
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast.success('Department added');
+      setDepartments((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+      setDepartmentId(data.id);
+      setShowAddDeptDialog(false);
+      setNewDeptName('');
+    } catch (error: any) {
+      if (error.code === '23505') {
+        toast.error('Department already exists');
+      } else {
+        toast.error('Failed to add department');
+      }
+    } finally {
+      setAddingDept(false);
+    }
+  };
+
+  const handleQuickAddMaterial = async () => {
+    if (!newMaterialName.trim() || !companyId) return;
+
+    setAddingMaterial(true);
+    try {
+      const { data, error } = await supabase
+        .from('materials')
+        .insert({
+          company_id: companyId,
+          name: newMaterialName.trim(),
+          default_unit_cost: newMaterialUnitCost ? parseFloat(newMaterialUnitCost) : null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast.success('Material added');
+      setMaterials((prev) => [...prev, {
+        id: data.id,
+        name: data.name,
+        default_unit_cost: data.default_unit_cost
+      }].sort((a, b) => a.name.localeCompare(b.name)));
+      
+      setItemName(data.name);
+      if (data.default_unit_cost) {
+        setUnitCost(String(data.default_unit_cost));
+      }
+      
+      setShowAddMaterialDialog(false);
+      setNewMaterialName('');
+      setNewMaterialUnitCost('');
+    } catch (error: any) {
+      if (error.code === '23505') {
+        toast.error('Material already exists');
+      } else {
+        toast.error('Failed to add material');
+      }
+    } finally {
+      setAddingMaterial(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -251,6 +372,7 @@ export default function AddCostSheet({
         invoice_reference: costType === 'subcontractors' ? (invoiceReference || null) : null,
         labor_cost: costType === 'materials' && materialLaborCost ? parseFloat(materialLaborCost) : null,
         transport_cost: costType === 'materials' && transportCost ? parseFloat(transportCost) : null,
+        department_id: departmentId || null,
       };
 
       if (editingCost) {
@@ -339,11 +461,57 @@ export default function AddCostSheet({
             />
           </div>
 
+          {/* Department Selector */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Department</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 text-xs text-primary hover:text-primary hover:bg-primary/10"
+                onClick={() => setShowAddDeptDialog(true)}
+              >
+                <Plus className="w-3 h-3 mr-1" /> Quick Add
+              </Button>
+            </div>
+            <Select 
+              value={departmentId || "none"} 
+              onValueChange={(val) => setDepartmentId(val === "none" ? null : val)}
+              disabled={loading}
+            >
+              <SelectTrigger className="bg-input border-border">
+                <SelectValue placeholder="Select a department" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No Department</SelectItem>
+                {departments.map((dept) => (
+                  <SelectItem key={dept.id} value={dept.id}>
+                    <span className="flex items-center gap-2">
+                      <Briefcase className="w-4 h-4" /> {dept.name}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Type-specific fields */}
           {costType === 'materials' && (
             <>
               <div className="space-y-2">
-                <Label htmlFor="itemName">Material *</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="itemName">Material *</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs text-primary hover:text-primary hover:bg-primary/10"
+                    onClick={() => setShowAddMaterialDialog(true)}
+                  >
+                    <Plus className="w-3 h-3 mr-1" /> Quick Add
+                  </Button>
+                </div>
                 <Select 
                   value={itemName} 
                   onValueChange={(val) => {
@@ -604,6 +772,69 @@ export default function AddCostSheet({
           </Button>
         </form>
       </SheetContent>
+
+      {/* Quick Add Department Dialog */}
+      <Dialog open={showAddDeptDialog} onOpenChange={setShowAddDeptDialog}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Quick Add Department</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <Label>Department Name</Label>
+              <Input
+                placeholder="e.g., Plumbing, Roofing"
+                value={newDeptName}
+                onChange={(e) => setNewDeptName(e.target.value)}
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddDeptDialog(false)}>Cancel</Button>
+            <Button onClick={handleQuickAddDepartment} disabled={addingDept || !newDeptName.trim()}>
+              {addingDept && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Add Department
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Quick Add Material Dialog */}
+      <Dialog open={showAddMaterialDialog} onOpenChange={setShowAddMaterialDialog}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Quick Add Material</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <Label>Material Name</Label>
+              <Input
+                placeholder="e.g., Cement, Timber"
+                value={newMaterialName}
+                onChange={(e) => setNewMaterialName(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Default Unit Cost (Optional)</Label>
+              <Input
+                type="number"
+                placeholder="0.00"
+                value={newMaterialUnitCost}
+                onChange={(e) => setNewMaterialUnitCost(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddMaterialDialog(false)}>Cancel</Button>
+            <Button onClick={handleQuickAddMaterial} disabled={addingMaterial || !newMaterialName.trim()}>
+              {addingMaterial && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Add Material
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Sheet>
   );
 }

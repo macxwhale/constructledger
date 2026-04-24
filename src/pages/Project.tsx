@@ -37,6 +37,7 @@ import CostBreakdownChart from '@/components/CostBreakdownChart';
 type Project = Tables<'projects'>;
 type Cost = Tables<'costs'>;
 type Income = Tables<'income'>;
+type Department = Tables<'departments'>;
 
 export default function ProjectPage() {
   const { id } = useParams<{ id: string }>();
@@ -45,6 +46,7 @@ export default function ProjectPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [costs, setCosts] = useState<Cost[]>([]);
   const [income, setIncome] = useState<Income[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [addCostOpen, setAddCostOpen] = useState(false);
   const [addIncomeOpen, setAddIncomeOpen] = useState(false);
@@ -63,30 +65,10 @@ export default function ProjectPage() {
 
   useEffect(() => {
     if (user && id) {
-      fetchProjectData();
+      fetchProjectDataProperly();
     }
   }, [user, id]);
 
-  const fetchProjectData = async () => {
-    try {
-      const [projectResult, costsResult, incomeResult] = await Promise.all([
-        supabase.from('projects').select('*').eq('id', id).single(),
-        supabase.from('costs').select('*').eq('project_id', id).order('date', { ascending: false }),
-        supabase.from('income').select('*').eq('project_id', id).order('date', { ascending: false }),
-      ]);
-
-      if (projectResult.error) throw projectResult.error;
-      
-      setProject(projectResult.data);
-      setCosts(costsResult.data || []);
-      setIncome(incomeResult.data || []);
-    } catch (error) {
-      toast.error('Failed to load project');
-      navigate('/dashboard');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const totalIncome = income.reduce((sum, i) => sum + Number(i.amount), 0);
   const totalCosts = costs.reduce((sum, c) => sum + Number(c.amount), 0);
@@ -150,7 +132,7 @@ export default function ProjectPage() {
       if (error) throw error;
 
       toast.success(`${itemToDelete.type === 'cost' ? 'Cost' : 'Income'} deleted successfully`);
-      fetchProjectData();
+      fetchProjectDataProperly();
     } catch (error) {
       toast.error('Failed to delete item');
     } finally {
@@ -167,6 +149,39 @@ export default function ProjectPage() {
       case 'equipment': return <Truck className="w-5 h-5 text-chart-3" />;
       case 'subcontractors': return <Hammer className="w-5 h-5 text-chart-4" />;
       default: return <Package className="w-5 h-5 text-destructive" />;
+    }
+  };
+
+  // Fix the company_id fetch
+  const fetchProjectDataProperly = async () => {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('user_id', user!.id)
+        .single();
+
+      if (!profile?.company_id) throw new Error('No company found');
+
+      const [projectResult, costsResult, incomeResult, departmentsResult] = await Promise.all([
+        supabase.from('projects').select('*').eq('id', id!).single(),
+        supabase.from('costs').select('*').eq('project_id', id!).order('date', { ascending: false }),
+        supabase.from('income').select('*').eq('project_id', id!).order('date', { ascending: false }),
+        supabase.from('departments').select('*').eq('company_id', profile.company_id).order('name'),
+      ]);
+
+      if (projectResult.error) throw projectResult.error;
+      
+      setProject(projectResult.data);
+      setCosts(costsResult.data || []);
+      setIncome(incomeResult.data || []);
+      setDepartments(departmentsResult.data || []);
+    } catch (error) {
+      console.error('Failed to load project:', error);
+      toast.error('Failed to load project');
+      navigate('/dashboard');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -368,6 +383,11 @@ export default function ProjectPage() {
                           <p className="text-sm text-muted-foreground">
                             {new Date(item.date).toLocaleDateString()}
                             {item.type === 'cost' && ` • ${(item as Cost).cost_type}`}
+                            {item.type === 'cost' && (item as Cost).department_id && (
+                              <span className="ml-2 px-1.5 py-0.5 bg-secondary/50 rounded text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+                                {departments.find(d => d.id === (item as Cost).department_id)?.name}
+                              </span>
+                            )}
                           </p>
                         </div>
                       </div>
@@ -419,7 +439,7 @@ export default function ProjectPage() {
         projectId={id!}
         defaultCostType={selectedCostType}
         editingCost={editingCost}
-        onSuccess={fetchProjectData}
+        onSuccess={fetchProjectDataProperly}
       />
 
       <AddIncomeSheet
@@ -430,7 +450,7 @@ export default function ProjectPage() {
         }}
         projectId={id!}
         editingIncome={editingIncome}
-        onSuccess={fetchProjectData}
+        onSuccess={fetchProjectDataProperly}
       />
 
       {/* Delete Confirmation Dialog */}
